@@ -301,34 +301,8 @@ class SpecPrefillEngine:
                 if keep_bindings:
                     names_to_enable += keep_bindings
                 if names_to_enable:
-                    e0 = time.perf_counter()
                     try:
-                        # Debug: print binding dims (from IoDescriptor selected_set) and allowed_shapes before enabling outputs
-                        for n in names_to_enable:
-                            idx = self._session.binding_index_map.get(n, None)
-                            if idx is not None:
-                                b = self._session.bindings[idx]
-                                try:
-                                    print(f"[spec:debug] binding '{n}' selected_set dims:", list(b.dims), flush=True)
-                                except Exception:
-                                    pass
-                                try:
-                                    if self._session.allowed_shapes:
-                                        allowed_dims = self._session.allowed_shapes[0][idx][1]
-                                        print(f"[spec:debug] binding '{n}' allowed_shapes[0] dims:", list(allowed_dims), flush=True)
-                                except Exception:
-                                    pass
-                        # Enable outputs (recreates QBuffers and restores buf_dims from binding.dims)
                         self._session.enable_outputs(names_to_enable)
-                        # Debug: print buf_dims after enable_outputs to confirm runtime-set dims
-                        for n in names_to_enable:
-                            idx = self._session.binding_index_map.get(n, None)
-                            if idx is not None:
-                                try:
-                                    elem_size, dims = self._session.buf_dims[idx]
-                                    print(f"[spec:debug] binding '{n}' buf_dims after enable:", list(dims), flush=True)
-                                except Exception:
-                                    pass
                     except Exception as e:
                         raise RuntimeError(f"[spec] enable_outputs failed: {e}")
 
@@ -362,30 +336,8 @@ class SpecPrefillEngine:
         if outputs_last is None:
             raise RuntimeError("No outputs from prefill; empty prompt?")
 
-
         # Cache last outputs for possible look-ahead
         self._last_outputs = outputs_last
-
-        # Debug: print shapes of prefill_queries and a sample past_key.*_RetainedState
-        try:
-            pq = outputs_last.get("prefill_queries", None)
-            if pq is not None:
-                print("[spec:debug] prefill_queries shape:", pq.shape, flush=True)
-            if layer_indices:
-                sample_key_name = f"past_key.{layer_indices[0]}_RetainedState"
-                if sample_key_name in outputs_last:
-                    key_shape = outputs_last[sample_key_name].shape
-                    print("[spec:debug]", sample_key_name, "shape:", key_shape, flush=True)
-                    # Print helpful axis hints: H_kv (index 1), sequence length (one of the last two), head_dim (the other)
-                    if len(key_shape) >= 4:
-                        print(
-                            "[spec:debug] key axes detail -> H_kv:", key_shape[1],
-                            " seq_axis_len(cand):", key_shape[-2],
-                            " head_dim_axis_len(cand):", key_shape[-1],
-                            flush=True
-                        )
-        except Exception as e:
-            print("[spec:debug] shape print failed:", repr(e), flush=True)
 
         # Cache Q_final (prefill_queries from last chunk)
         if "prefill_queries" not in outputs_last:
