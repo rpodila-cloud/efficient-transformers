@@ -1184,7 +1184,7 @@ class SpecPrefillEngine:
                         outputs,
                         position_ids_next,  # Use returned next position, not original pos_slot
                         remaining_len,
-                        decode_batch_id=np.array(decode_batch_id, dtype=np.int64).reshape(1, 1),
+                        decode_batch_id,  # Pass scalar integer, matching default CB behavior
                     )
                 
                 # Run continuous batching decode
