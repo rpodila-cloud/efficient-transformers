@@ -1176,13 +1176,13 @@ class SpecPrefillEngine:
                         ids_slot, pos_slot, _ = prompt_queue.popleft()
                     
                     # Run prefill for this batch slot
-                    outputs, _, _, _ = base_engine.prefill_from_ids(
+                    outputs, position_ids_next, _, _ = base_engine.prefill_from_ids(
                         ids_slot, pos_slot, prefill_logit_bs=1, 
                         batch_index=batch_index[decode_batch_id : decode_batch_id + 1]
                     )
                     _ = base_engine.update_decode_input(
                         outputs,
-                        pos_slot,
+                        position_ids_next,  # Use returned next position, not original pos_slot
                         remaining_len,
                         decode_batch_id=np.array(decode_batch_id, dtype=np.int64).reshape(1, 1),
                     )
