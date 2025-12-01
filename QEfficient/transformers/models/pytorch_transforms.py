@@ -730,6 +730,27 @@ class SamplerTransform:
         return model, transformed
 
 
+class SpeculativePrefillTransform:
+    """
+    Flag-only transform to enable speculative prefill behavior.
+
+    When qaic_config["enable_speculative_prefill"] is True, sets a flag on the model
+    config so downstream model code can emit `prefill_queries` for ONNX/export.
+    Otherwise, no-op.
+    """
+
+    @classmethod
+    def apply(cls, model: nn.Module, qaic_config: Optional[dict] = None, **kwargs) -> Tuple[nn.Module, bool]:
+        if qaic_config is None or not qaic_config.get("enable_speculative_prefill", False):
+            return model, False
+        # Set a flag on config for model forward to check
+        try:
+            setattr(model.config, "enable_speculative_prefill", True)
+        except Exception:
+            pass
+        return model, True
+
+
 class VlmKVOffloadTransform(ModuleMappingTransform):
     # supported architectures
     _module_mapping = {
