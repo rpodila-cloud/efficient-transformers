@@ -2,6 +2,7 @@ from QEfficient import QEFFAutoModelForCausalLM
 from transformers import AutoTokenizer
 from pathlib import Path
 import onnx
+from QEfficient.generation.text_generation_inference import get_compilation_dims
 
 spec_model = QEFFAutoModelForCausalLM.from_pretrained(
     "meta-llama/Llama-3.2-1B-Instruct",
@@ -27,8 +28,9 @@ spec_model.compile(
     split_retained_state_io=True, 
     aic_enable_depth_first=True)
 
-base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
-# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
+
+# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
 
 export_dir = Path("export_base_prefill")
 onnx_path = base_model.export(export_dir=export_dir)
@@ -40,14 +42,18 @@ base_model.compile(
     onnx_path=str(onnx_path),
     prefill_seq_len=128, 
     ctx_len=4096, 
-    batch_size=1, 
-    # full_batch_size=4,
+    # batch_size=1, 
+    full_batch_size=2,
     num_devices=4, 
     num_cores=16, 
     mxfp6_matmul=True, 
     mxint8_kv_cache=True, 
     allow_mxint8_mdp_io=True, 
     aic_enable_depth_first=True)
+
+# Verify continuous batching compile (FBS should be > 1)
+_, _, fbs = get_compilation_dims(str(base_model.qpc_path))
+print("Base full_batch_size (FBS):", fbs)
 
 tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B-Instruct")
 

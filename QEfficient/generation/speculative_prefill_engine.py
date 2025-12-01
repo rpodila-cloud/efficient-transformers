@@ -1113,6 +1113,7 @@ class SpecPrefillEngine:
             fbs = getattr(base_engine, 'full_batch_size', None) if continuous_batching else None
             
             if fbs and continuous_batching:
+                logger.info(f"[spec] Using continuous batching decode with full_batch_size={fbs}")
                 # Continuous batching path - handle multiple prompts in batch
                 from collections import deque
                 
