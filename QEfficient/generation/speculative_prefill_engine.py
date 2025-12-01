@@ -1091,17 +1091,35 @@ class SpecPrefillEngine:
         final_pos = pos_global[keep_idx].reshape(1, -1).astype(np.int64, copy=False)
 
         # ---- TTFT(base_full): baseline base prefill on full prompt ----
+        # For CB-compiled base models, explicitly pass a 1x1 batch_index to match the prefill specialization.
+        # This avoids mixing decode FBS batch_index with prefill [1, S] inputs.
         t0 = time.perf_counter()
-        out_base_full, pos_full, _ = base_engine.run_prefill(
-            prompt, generation_len=None, prefill_logit_bs=prefill_logit_bs
-        )
+        fbs_base = getattr(base_engine, 'full_batch_size', None) if continuous_batching else None
+        if fbs_base and continuous_batching:
+            out_base_full, pos_full, _ = base_engine.run_prefill(
+                prompt,
+                generation_len=None,
+                prefill_logit_bs=prefill_logit_bs,
+                decode_batch_id=np.array(0, dtype=np.int64).reshape(1, 1),
+            )
+        else:
+            out_base_full, pos_full, _ = base_engine.run_prefill(
+                prompt, generation_len=None, prefill_logit_bs=prefill_logit_bs
+            )
         ttft_baseline_s = time.perf_counter() - t0
 
         # ---- TTFT(base_pruned_only): base prefill on pruned ids/pos ----
         t1 = time.perf_counter()
-        out_base_pruned, _, padded_len, num_chunks = base_engine.prefill_from_ids(
-            final_ids, final_pos, prefill_logit_bs=prefill_logit_bs
-        )
+        # For CB-compiled base models, explicitly pass a 1x1 batch_index for the pruned prefill as well.
+        if fbs_base and continuous_batching:
+            out_base_pruned, _, padded_len, num_chunks = base_engine.prefill_from_ids(
+                final_ids, final_pos, prefill_logit_bs=prefill_logit_bs,
+                batch_index=np.array(0, dtype=np.int64).reshape(1, 1)
+            )
+        else:
+            out_base_pruned, _, padded_len, num_chunks = base_engine.prefill_from_ids(
+                final_ids, final_pos, prefill_logit_bs=prefill_logit_bs
+            )
         t2 = time.perf_counter()
         ttft_base_pruned_only_s = t2 - t1
         ttft_speculative_s = ttft_spec_only_s + ttft_base_pruned_only_s
