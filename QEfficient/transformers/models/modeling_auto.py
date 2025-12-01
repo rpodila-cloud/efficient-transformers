@@ -3149,43 +3149,54 @@ class QEFFAutoModelForCausalLM(QEFFBaseModel):
         # Initialize base engine
         _, base_ctx_len, fbs = get_compilation_dims(str(base_model.qpc_path))
         base_runner = TextGeneration(
-            tokenizer=tokenizer, qpc_path=str(base_model.qpc_path), device_id=base_device_id, ctx_len=base_ctx_len
+            tokenizer=tokenizer, 
+            qpc_path=str(base_model.qpc_path), 
+            device_id=base_device_id, 
+            ctx_len=base_ctx_len,
+            full_batch_size=fbs  # Explicitly pass FBS to avoid auto-detection bug
         )
         
         # Determine if continuous batching is enabled
         continuous_batching = fbs is not None and fbs > 1
         
-        # Process first prompt using the enhanced instrumented engine method
-        # This replaces the manual execution with the timing-instrumented approach
-        ptxt = prompt_list[0]  # Handle first prompt
+        # Process all prompts
+        all_results = []
+        for i, ptxt in enumerate(prompt_list):
+            print(f"\n[Spec Prefill] Processing prompt {i+1}/{len(prompt_list)}")
+            result = spec_engine.prune_and_base_prefill(
+                base_engine=base_runner._qaic_model,
+                prompt=ptxt,
+                keep_cfg=keep_cfg,
+                gen_len=gen_len,
+                continuous_batching=continuous_batching,
+                full_batch_size=fbs,
+            )
+            all_results.append(result)
         
-        result = spec_engine.prune_and_base_prefill(
-            base_engine=base_runner._qaic_model,
-            prompt=ptxt,
-            keep_cfg=keep_cfg,
-            gen_len=gen_len,
-            continuous_batching=continuous_batching,
-            full_batch_size=fbs,
-        )
+        # Aggregate results: collect all generated texts and average metrics
+        generated_texts = [r.get("generated_text_pruned") for r in all_results]
         
-        # Extract results with complete timing metrics
-        generated_text_pruned = result.get("generated_text_pruned")
-        keep_idx = result["keep_idx"]
-        importance = result.get("importance")
+        # Average timing metrics across all prompts
+        avg_ttft_baseline_s = sum(r["ttft_baseline_s"] for r in all_results) / len(all_results)
+        avg_ttft_spec_device_s = sum(r["ttft_spec_device_s"] for r in all_results) / len(all_results)
+        avg_ttft_host_scoring_s = sum(r["ttft_host_scoring_s"] for r in all_results) / len(all_results)
+        avg_ttft_base_pruned_only_s = sum(r["ttft_base_pruned_only_s"] for r in all_results) / len(all_results)
+        avg_ttft_speculative_s = sum(r["ttft_speculative_s"] for r in all_results) / len(all_results)
         
         # Return enhanced results with timing metrics
         return {
-            "generated_text_pruned": generated_text_pruned,
-            "keep_idx": keep_idx,
-            "importance": importance,
-            # Enhanced: Include complete TTFT timing metrics
-            "ttft_baseline_s": result["ttft_baseline_s"],
-            "ttft_spec_device_s": result["ttft_spec_device_s"], 
-            "ttft_host_scoring_s": result["ttft_host_scoring_s"],
-            "ttft_base_pruned_only_s": result["ttft_base_pruned_only_s"],
-            "ttft_speculative_s": result["ttft_speculative_s"],
-            "S": result["S"],
-            "kept": result["kept"],
+            "generated_text_pruned": generated_texts if len(generated_texts) > 1 else generated_texts[0],
+            "keep_idx": [r["keep_idx"] for r in all_results],
+            "importance": [r.get("importance") for r in all_results],
+            # Enhanced: Include averaged TTFT timing metrics
+            "ttft_baseline_s": avg_ttft_baseline_s,
+            "ttft_spec_device_s": avg_ttft_spec_device_s, 
+            "ttft_host_scoring_s": avg_ttft_host_scoring_s,
+            "ttft_base_pruned_only_s": avg_ttft_base_pruned_only_s,
+            "ttft_speculative_s": avg_ttft_speculative_s,
+            "S": [r["S"] for r in all_results],
+            "kept": [r["kept"] for r in all_results],
+            "num_prompts": len(all_results),
         }
 
     def check_and_get_num_speculative_tokens(self, num_speculative_tokens: Optional[int], prefill_seq_len: int):

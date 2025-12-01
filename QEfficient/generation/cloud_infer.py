@@ -82,19 +82,6 @@ class QAICInferenceSession:
         ]
         self.bindings = iodesc.selected_set.bindings
         self.binding_index_map = {binding.name: binding.index for binding in self.bindings}
-        # Debug: Log initial binding dims for retained-state past_key outputs to trace axis sizes from IoDescriptor
-        try:
-            for name in [binding.name for binding in self.bindings if binding.dir == aicapi.BUFFER_IO_TYPE_OUTPUT]:
-                if name.startswith("past_key.") and name.endswith("_RetainedState"):
-                    idx = self.binding_index_map.get(name, None)
-                    if idx is not None:
-                        dims = list(self.bindings[idx].dims)
-                        print(f"[qaic:init] binding '{name}' selected_set dims:", dims, flush=True)
-                        if self.allowed_shapes:
-                            allowed_dims = self.allowed_shapes[0][idx][1]
-                            print(f"[qaic:init] binding '{name}' allowed_shapes[0] dims:", list(allowed_dims), flush=True)
-        except Exception:
-            pass
         # Create and load Program
         prog_properties = qaicrt.QAicProgramProperties()
         prog_properties.SubmitRetryTimeoutMs = 60_000

@@ -29,8 +29,8 @@ spec_model.compile(
     aic_enable_depth_first=True)
 
 
-base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
-# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
+# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
 
 export_dir = Path("export_base_prefill")
 onnx_path = base_model.export(export_dir=export_dir)
@@ -42,8 +42,8 @@ base_model.compile(
     onnx_path=str(onnx_path),
     prefill_seq_len=128, 
     ctx_len=4096, 
-    batch_size=1, 
-    # full_batch_size=2,
+    # batch_size=1, 
+    full_batch_size=2,
     num_devices=4, 
     num_cores=16, 
     mxfp6_matmul=True, 
@@ -57,15 +57,35 @@ print("Base full_batch_size (FBS):", fbs)
 
 tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B-Instruct")
 
+# Load the base prompt
 prompt_text = Path("/local/mnt/p_drive/users/rpodila/dl_inference/speculative_prefill_gpu/speculative_prefill_demo/prompts/small_prompt.txt").read_text(encoding="utf-8")
-# # ✅ Simple, clean, user-friendly
+
+# Create 2 different prompts for FBS=2
+prompts = [
+    prompt_text,  # First prompt (original)
+    "Tell me a short joke about artificial intelligence and machine learning.",  # Second prompt (different)
+]
+
+print(f"\n{'='*80}")
+print(f"Testing with {len(prompts)} prompts (FBS={fbs})")
+print(f"{'='*80}\n")
+
+# Process both prompts with speculative prefill
 result = spec_model.generate_speculative_prefill(
     base_model=base_model,
     tokenizer=tokenizer,
-    prompts=prompt_text,
+    prompts=prompts,  # Pass list of 2 prompts
     device_id=[8,9,10,11],
     base_device_id=[12,13,14,15],
     keep_percentage=0.20,
 )
 
-print(result["generated_text_pruned"])
+# Print results for all prompts
+if isinstance(result["generated_text_pruned"], list):
+    for i, text in enumerate(result["generated_text_pruned"]):
+        print(f"\n{'='*80}")
+        print(f"Prompt {i+1} Result:")
+        print(f"{'='*80}")
+        print(text)
+else:
+    print(result["generated_text_pruned"])
