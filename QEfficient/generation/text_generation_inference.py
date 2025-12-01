@@ -840,6 +840,66 @@ class QEffTextGenerationBase:
             generation_len,
         )
 
+    def prefill_from_ids(
+        self,
+        final_ids: np.ndarray,
+        final_pos: np.ndarray,
+        prefill_logit_bs: int = 1,
+        batch_index: Optional[np.ndarray] = None,
+    ):
+        """Run prefill for preconstructed id/pos arrays, mirroring :meth:`run_prefill`.
+
+        Args:
+            final_ids (np.ndarray): token ids shaped [batch, seq_len].
+            final_pos (np.ndarray): absolute position ids shaped [batch, seq_len].
+            prefill_logit_bs (int): batch size for logits placeholder.
+            batch_index (Optional[np.ndarray]): CB batch indices shaped [batch, 1] if using continuous batching.
+
+        Returns:
+            Tuple(outputs, orig_seq_len, padded_len, num_chunks)
+        """
+
+        ids = final_ids
+        pos = final_pos
+        orig_seq_len = int(ids.shape[1])
+
+        padded_len = orig_seq_len
+        num_chunks = -(padded_len // -self._prefill_seq_len)
+        padded_len = num_chunks * self._prefill_seq_len
+
+        if padded_len > orig_seq_len:
+            pad_id = self.tokenizer.pad_token_id
+            pad_width = padded_len - orig_seq_len
+            inputs = {
+                "input_ids": np.pad(ids, ((0, 0), (0, pad_width)), constant_values=pad_id),
+                "position_ids": np.pad(pos, ((0, 0), (0, pad_width)), constant_values=-1),
+            }
+        else:
+            inputs = {"input_ids": ids, "position_ids": pos}
+
+        if batch_index is not None:
+            inputs["batch_index"] = batch_index
+
+        logits_out_placeholder = np.zeros((prefill_logit_bs, 1, self._vocab_size), dtype=np.float32)
+        self._session.set_buffers({"logits": logits_out_placeholder})
+
+        for i in range(num_chunks):
+            chunk_inputs = inputs.copy()
+            chunk_inputs["input_ids"] = inputs["input_ids"][
+                :, i * self._prefill_seq_len : (i + 1) * self._prefill_seq_len
+            ]
+            chunk_inputs["position_ids"] = inputs["position_ids"][
+                :, i * self._prefill_seq_len : (i + 1) * self._prefill_seq_len
+            ]
+            if batch_index is not None:
+                chunk_inputs["batch_index"] = batch_index
+            outputs = self._session.run(chunk_inputs)
+
+            if self._write_io_dir is not None:
+                write_io_files(inputs, outputs, self._write_io_dir, "prefill", "aic_batch_io", True, False)
+
+        return outputs, orig_seq_len, padded_len, num_chunks
+
     def initialize_ccl(self, decode_inputs):
         self.list_of_comp_ctx_lengths_decode = [np.zeros(length) for length in self.comp_ctx_lengths_decode]
         max_ccl_id = len(self.comp_ctx_lengths_decode) - 1
