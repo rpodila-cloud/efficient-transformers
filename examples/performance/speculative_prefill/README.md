@@ -90,11 +90,44 @@ Verify CB is engaged at runtime
   [spec] Using continuous batching decode with full_batch_size=<FBS>
 - TTFT metrics are computed before decode and are valid regardless of CB, which is expected and correct.
 
+Continuous Batching Latency Characteristics
+Important: Understand CB execution model before production deployment:
+
+Serial Prefill Phase:
+- CB prefill uses batch_size=1 specialization and fills slots sequentially
+- If full_batch_size=8 and only 1 prompt arrives, the system must:
+  a) Wait for 7 additional prompts to fill remaining slots, OR
+  b) Pad/duplicate the single prompt across all 8 slots
+- Latency impact: First prompt waits for ALL slots to complete prefill before decode starts
+- Example: With FBS=8 and 50ms per prefill, total wait = 8 × 50ms = 400ms before first token
+
+Pipelining Constraint:
+- Current architecture does NOT support overlapped prefill/decode execution
+- All prefill operations must complete before ANY decode operations begin
+- This is an architectural design constraint (enforced at QEfficient/generation/text_generation_inference.py lines 1206-1209)
+- Slot 0 cannot start decode while Slot 1 is still prefilling
+
+Recommendations:
+- Low-latency single-prompt use: Compile base model WITHOUT CB (omit full_batch_size parameter)
+  - Pros: Minimal TTFT, no batch formation overhead
+  - Cons: Cannot process multiple requests concurrently
+- High-throughput batch scenarios: Compile base model WITH CB (full_batch_size > 1)
+  - Pros: Parallel decode across multiple requests, improved total throughput
+  - Cons: Higher TTFT due to serial prefill phase, batch formation latency
+- Hybrid approach: Deploy both CB and non-CB QPCs; route based on request load
+
+Performance Trade-offs:
+- TTFT (Time To First Token): Non-CB typically 5-10x faster for single prompts
+- Throughput (Tokens/Second): CB can achieve 2-8x higher throughput with full batches
+- Memory: CB requires FBS × ctx_len × layers KV cache allocation (larger footprint)
+
 Key notes
 - Speculator QPC does not require CB; only the base/target model needs CB compilation.
 - Ensure base compile includes a decode specialization (compile() default builds both prefill and decode when prefill_only is None).
 - Memory footprint grows with full_batch_size and KV cache dtype; adjust FBS accordingly.
 - Device IDs must match your hardware setup; the example shows separate device groups for speculator and base.
+- Decode specialization is automatically validated at runtime (raises error if missing for CB mode).
+- Batch slot padding with duplicate prompts may produce identical outputs; this is logged as a warning.
 
 Reference script
 See examples/performance/speculative_prefill/speculative_prefill_app.py for a runnable example that:

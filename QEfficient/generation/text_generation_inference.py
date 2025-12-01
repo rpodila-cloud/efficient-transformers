@@ -487,6 +487,12 @@ class QEffTextGenerationBase:
 
         self.tokenizer = tokenizer
         self._set_tokenizer_params()  # set tokenizer params
+        
+        # Cache CCL lists to avoid redundant allocations in prefill_from_ids and run_prefill
+        self.list_of_comp_ctx_lengths_prefill = None
+        if self.comp_ctx_lengths_prefill is not None:
+            self.list_of_comp_ctx_lengths_prefill = [np.zeros(length) for length in self.comp_ctx_lengths_prefill]
+        
         # Skip inputs/outputs
         self._session.skip_buffers(
             [x for x in self._session.input_names + self._session.output_names if x.startswith("past_")]
@@ -846,15 +852,25 @@ class QEffTextGenerationBase:
         final_pos: np.ndarray,
         prefill_logit_bs: int = 1,
         batch_index: Optional[np.ndarray] = None,
+        lora_id: Optional[int] = None,
+        num_logits_to_keep: Optional[np.ndarray] = None,
     ):
         """
         Run prefill for explicit token and position ids, respecting prefill specialization.
         Returns (outputs_last, position_ids_next, padded_len, num_chunks).
+        
+        Args:
+            final_ids: Input token IDs (2D array, shape [1, seq_len])
+            final_pos: Position IDs (2D array, shape [1, seq_len])
+            prefill_logit_bs: Batch size for prefill logits output
+            batch_index: Optional batch index for CB slot targeting (shape [1, 1])
+            lora_id: Optional LoRA adapter ID for multi-adapter inference
+            num_logits_to_keep: Optional array for TLM models specifying logit count
+            
         Notes:
           - Enforces serial prefill semantics for CB: if batch_index is provided, it must be [1,1].
           - Mirrors chunking behavior in run_prefill.
-          - Adds sampler and comp_ctx_lengths_prefill handling for parity with run_prefill.
-          - TLM and LoRA handling intentionally omitted per request.
+          - Supports sampler, comp_ctx_lengths_prefill, LoRA, and TLM.
         """
         # Validate inputs (expect serial prefill: batch size 1)
         ids = np.asarray(final_ids)
@@ -890,6 +906,16 @@ class QEffTextGenerationBase:
         # Attach specialization selectors
         if batch_index is not None:
             inputs["batch_index"] = np.asarray(batch_index)
+        
+        # LoRA adapter support
+        if lora_id is not None:
+            inputs["lora_ids"] = np.array(lora_id, dtype=np.int64).reshape(1, 1)
+        
+        # TLM (Thin Language Model) support
+        if self.is_tlm and num_logits_to_keep is not None:
+            inputs["num_logits_to_keep"] = np.asarray(num_logits_to_keep)
+        elif self.is_tlm:
+            inputs["num_logits_to_keep"] = np.zeros((1, 1))
 
         # Parity: include sampler inputs if enabled
         if self.include_sampler:
@@ -900,9 +926,8 @@ class QEffTextGenerationBase:
                 else:
                     inputs[op] = self.sampling_params[op]
 
-        # Parity: comp_ctx_lengths_prefill (CCL)
+        # Parity: comp_ctx_lengths_prefill (CCL) - reuse cached lists from __init__
         if self.comp_ctx_lengths_prefill is not None:
-            self.list_of_comp_ctx_lengths_prefill = [np.zeros(length) for length in self.comp_ctx_lengths_prefill]
             prefill_ccl_id = 0
             inputs["comp_ctx_lengths"] = self.list_of_comp_ctx_lengths_prefill[prefill_ccl_id]
 
@@ -931,6 +956,21 @@ class QEffTextGenerationBase:
                 chunk_inputs["last_accepted_output_tokens"] = chunk_inputs["input_ids"]
 
             outputs_last = self._session.run(chunk_inputs)
+            
+            # Handle potential compiler padding in retained-state outputs
+            # Compiler may add trailing padding to last dimension for memory alignment
+            for output_name in outputs_last:
+                if output_name.endswith("_RetainedState") and outputs_last[output_name].ndim == 4:
+                    # Get expected head_dim from binding info
+                    if output_name in self._session.binding_index_map:
+                        binding_idx = self._session.binding_index_map[output_name]
+                        expected_dims = self._session.bindings[binding_idx].dims
+                        if len(expected_dims) >= 4:
+                            expected_head_dim = expected_dims[-1]
+                            actual_head_dim = outputs_last[output_name].shape[-1]
+                            if actual_head_dim > expected_head_dim:
+                                # Slice to remove compiler padding
+                                outputs_last[output_name] = outputs_last[output_name][..., :expected_head_dim]
 
             if self._write_io_dir is not None:
                 write_io_files(inputs, outputs_last, self._write_io_dir, "prefill", "aic_batch_io", True, False)

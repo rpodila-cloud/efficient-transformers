@@ -9,7 +9,7 @@ import numpy as np
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 import os
 
-from QEfficient.generation.text_generation_inference import write_io_files
+from QEfficient.generation.text_generation_inference import write_io_files, get_compilation_dims
 from QEfficient.generation.cloud_infer import QAICInferenceSession
 from QEfficient.utils.logging_utils import logger
 
@@ -1108,6 +1108,18 @@ class SpecPrefillEngine:
             )
         ttft_baseline_s = time.perf_counter() - t0
 
+        # ---- Validate decode specialization exists for CB ----
+        if continuous_batching and fbs_base:
+            try:
+                _, _, fbs_compiled = get_compilation_dims(str(base_engine._qpc_path))
+                if fbs_compiled is None:
+                    raise ValueError(
+                        "Base QPC missing decode specialization; continuous_batching requires "
+                        "full_batch_size>1 compile. Recompile base model with full_batch_size parameter."
+                    )
+            except Exception as e:
+                logger.warning(f"Could not verify decode specialization: {e}. Proceeding with caution.")
+
         # ---- TTFT(base_pruned_only): base prefill on pruned ids/pos ----
         t1 = time.perf_counter()
         # For CB-compiled base models, explicitly pass a 1x1 batch_index for the pruned prefill as well.
@@ -1154,6 +1166,11 @@ class SpecPrefillEngine:
                 for decode_batch_id in range(fbs):
                     if not prompt_queue:
                         # Pad with current prompt if queue is exhausted
+                        if decode_batch_id < fbs - 1:
+                            logger.warning(
+                                f"Padding batch slots {decode_batch_id+1}-{fbs} with duplicate prompt; "
+                                f"may produce identical decode outputs for these slots."
+                            )
                         ids_slot, pos_slot = final_ids, final_pos
                     else:
                         ids_slot, pos_slot, _ = prompt_queue.popleft()

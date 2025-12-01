@@ -29,8 +29,8 @@ spec_model.compile(
     aic_enable_depth_first=True)
 
 
-# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
-base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
+base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+# base_model = QEFFAutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct", continuous_batching=True)
 
 export_dir = Path("export_base_prefill")
 onnx_path = base_model.export(export_dir=export_dir)
@@ -42,8 +42,8 @@ base_model.compile(
     onnx_path=str(onnx_path),
     prefill_seq_len=128, 
     ctx_len=4096, 
-    # batch_size=1, 
-    full_batch_size=2,
+    batch_size=1, 
+    # full_batch_size=2,
     num_devices=4, 
     num_cores=16, 
     mxfp6_matmul=True, 
