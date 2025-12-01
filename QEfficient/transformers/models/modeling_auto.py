@@ -23,6 +23,7 @@ from transformers import (
     PreTrainedTokenizer,
     PreTrainedTokenizerFast,
     TextStreamer,
+    AutoTokenizer,
 )
 
 import QEfficient
@@ -38,7 +39,9 @@ from QEfficient.generation.text_generation_inference import (
     PerfMetrics,
     calculate_latency,
     get_compilation_dims,
+    TextGeneration,
 )
+from QEfficient.generation.speculative_prefill_engine import KeepConfig, SpecPrefillEngine
 from QEfficient.generation.vlm_generation import VisionLanguageGeneration
 from QEfficient.transformers.modeling_utils import DYNAMIC_SEQ_LEN_SUPPORTED_MODEL_ARCH
 from QEfficient.transformers.models.pytorch_transforms import (
@@ -47,6 +50,7 @@ from QEfficient.transformers.models.pytorch_transforms import (
     KVCacheTransform,
     PoolingTransform,
     SamplerTransform,
+    SpeculativePrefillTransform,
     SpDTransform,
     VlmKVOffloadTransform,
     VlmNoKVOffloadTransform,
@@ -2304,6 +2308,7 @@ class QEFFAutoModelForCausalLM(QEFFBaseModel):
         Mxfp4GptOssExpertDequantizeTransform,
         CustomOpsTransform,
         KVCacheTransform,
+        SpeculativePrefillTransform,
         SplitGateUpWeightsTransform,
         KVCacheExternalModuleMapperTransform,
     ]
@@ -2369,6 +2374,8 @@ class QEFFAutoModelForCausalLM(QEFFBaseModel):
         self.num_layers = model.config.num_hidden_layers
         self.continuous_batching = continuous_batching
         self.model.qaic_config = qaic_config
+        # Ensure speculative prefill is flagged on the model config before export so ONNX includes "prefill_queries"
+        self.model, _ = SpeculativePrefillTransform.apply(self.model, qaic_config, **kwargs)
         self.model, transformed = SpDTransform.apply(self.model, qaic_config, **kwargs)
         self.is_tlm = transformed
 
@@ -2590,6 +2597,10 @@ class QEFFAutoModelForCausalLM(QEFFBaseModel):
                     dynamic_axes[f"past_{kv}.{i}"] = pkv_dynamic_axes[i]
                     output_names.append(f"past_{kv}.{i}_RetainedState")
 
+        if getattr(self.model.config, "enable_speculative_prefill", False):
+            output_names.append("prefill_queries")
+            dynamic_axes["prefill_queries"] = {0: "batch_size"}
+            
         if self.continuous_batching:
             example_inputs["batch_index"] = torch.arange(bs).view(bs, 1)
             dynamic_axes["batch_index"] = {0: "batch_size"}
@@ -3094,6 +3105,88 @@ class QEFFAutoModelForCausalLM(QEFFBaseModel):
             )
         else:
             raise NotImplementedError("Only AI_100 runtime is supported right now via generate API")
+
+    def generate_speculative_prefill(
+        self,
+        *,
+        base_model,
+        tokenizer,
+        prompts,
+        device_id=None,
+        base_device_id=None,
+        keep_percentage: float = 0.1,
+        decode: bool = True,
+        gen_len: Optional[int] = None,
+    ):
+        """
+        Run speculative prefill using this model as speculator and a base model for pruned prefill/decode.
+        Requires qaic_config["enable_speculative_prefill"]=True on the speculator and compiled QPCs for both models.
+        
+        Enhanced implementation using the instrumented SpecPrefillEngine.prune_and_base_prefill() method
+        to provide complete TTFT timing metrics while maintaining continuous batching support.
+        """
+        if not getattr(self.model.config, "enable_speculative_prefill", False):
+            raise ValueError("enable_speculative_prefill must be set in qaic_config for the speculator model.")
+        if self.qpc_path is None:
+            raise ValueError("Speculator model is not compiled. Call compile() first.")
+        if getattr(base_model, "qpc_path", None) is None:
+            raise ValueError("Base model is not compiled. Call compile() on the base model first.")
+
+        prompt_list = prompts if isinstance(prompts, list) else [prompts]
+        keep_cfg = KeepConfig(strategy="percentage", percentage=keep_percentage, chunk=True, chunk_size=32)
+
+        # Initialize speculator engine
+        _, spec_ctx_len, _ = get_compilation_dims(str(self.qpc_path))
+        spec_name = self.model.qaic_config.get("pretrained_model_name_or_path") if self.model.qaic_config else None
+        spec_tokenizer = AutoTokenizer.from_pretrained(spec_name) if spec_name else tokenizer
+        spec_engine = SpecPrefillEngine(
+            tokenizer=spec_tokenizer,
+            qpc_path=str(self.qpc_path),
+            ctx_len=spec_ctx_len,
+            device_id=device_id,
+        )
+
+        # Initialize base engine
+        _, base_ctx_len, fbs = get_compilation_dims(str(base_model.qpc_path))
+        base_runner = TextGeneration(
+            tokenizer=tokenizer, qpc_path=str(base_model.qpc_path), device_id=base_device_id, ctx_len=base_ctx_len
+        )
+        
+        # Determine if continuous batching is enabled
+        continuous_batching = fbs is not None and fbs > 1
+        
+        # Process first prompt using the enhanced instrumented engine method
+        # This replaces the manual execution with the timing-instrumented approach
+        ptxt = prompt_list[0]  # Handle first prompt
+        
+        result = spec_engine.prune_and_base_prefill(
+            base_engine=base_runner._qaic_model,
+            prompt=ptxt,
+            keep_cfg=keep_cfg,
+            gen_len=gen_len,
+            continuous_batching=continuous_batching,
+            full_batch_size=fbs,
+        )
+        
+        # Extract results with complete timing metrics
+        generated_text_pruned = result.get("generated_text_pruned")
+        keep_idx = result["keep_idx"]
+        importance = result.get("importance")
+        
+        # Return enhanced results with timing metrics
+        return {
+            "generated_text_pruned": generated_text_pruned,
+            "keep_idx": keep_idx,
+            "importance": importance,
+            # Enhanced: Include complete TTFT timing metrics
+            "ttft_baseline_s": result["ttft_baseline_s"],
+            "ttft_spec_device_s": result["ttft_spec_device_s"], 
+            "ttft_host_scoring_s": result["ttft_host_scoring_s"],
+            "ttft_base_pruned_only_s": result["ttft_base_pruned_only_s"],
+            "ttft_speculative_s": result["ttft_speculative_s"],
+            "S": result["S"],
+            "kept": result["kept"],
+        }
 
     def check_and_get_num_speculative_tokens(self, num_speculative_tokens: Optional[int], prefill_seq_len: int):
         """

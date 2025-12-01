@@ -82,6 +82,19 @@ class QAICInferenceSession:
         ]
         self.bindings = iodesc.selected_set.bindings
         self.binding_index_map = {binding.name: binding.index for binding in self.bindings}
+        # Debug: Log initial binding dims for retained-state past_key outputs to trace axis sizes from IoDescriptor
+        try:
+            for name in [binding.name for binding in self.bindings if binding.dir == aicapi.BUFFER_IO_TYPE_OUTPUT]:
+                if name.startswith("past_key.") and name.endswith("_RetainedState"):
+                    idx = self.binding_index_map.get(name, None)
+                    if idx is not None:
+                        dims = list(self.bindings[idx].dims)
+                        print(f"[qaic:init] binding '{name}' selected_set dims:", dims, flush=True)
+                        if self.allowed_shapes:
+                            allowed_dims = self.allowed_shapes[0][idx][1]
+                            print(f"[qaic:init] binding '{name}' allowed_shapes[0] dims:", list(allowed_dims), flush=True)
+        except Exception:
+            pass
         # Create and load Program
         prog_properties = qaicrt.QAicProgramProperties()
         prog_properties.SubmitRetryTimeoutMs = 60_000
@@ -150,6 +163,23 @@ class QAICInferenceSession:
         """
 
         self.set_buffers({k: np.array([]) for k in skipped_buffer_names})
+        
+    def enable_outputs(self, names: List[str]):
+        """
+        Re-enable previously skipped outputs by recreating QBuffers and restoring
+        ``buf_dims`` from the selected bindings (element size & dims).
+        """
+        for name in names:
+            if name not in self.binding_index_map:
+                continue
+            idx = self.binding_index_map[name]
+            binding = self.bindings[idx]  # selected_set binding
+            # Recreate buffer to the selected size
+            self.qbuffers[idx] = qaicrt.QBuffer(bytes(binding.size))
+            # Restore buf_dims elem size & dims from the binding
+            elem_size = aic_to_np_dtype_mapping[binding.type].itemsize
+            dims = list(binding.dims)
+            self.buf_dims[idx] = (elem_size, dims)
 
     def run(self, inputs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         """

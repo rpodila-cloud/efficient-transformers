@@ -28,6 +28,10 @@ from transformers.models.llama.modeling_llama import (
 from QEfficient.transformers.cache_utils import QEffDynamicCache
 from QEfficient.transformers.modeling_attn_mask_utils import _create_causal_mask
 from QEfficient.utils.constants import MIN_MASKED_ATTENTION_VALUE
+from QEfficient.transformers.models.modeling_outputs_qeff import (
+    QEffBaseModelOutputWithPast,
+    QEffCausalLMOutputWithPast,
+)
 
 
 class QEffLlamaRotaryEmbedding(LlamaRotaryEmbedding):
@@ -137,7 +141,10 @@ class QEffLlamaAttention(LlamaAttention):
         use_cache: bool = False,
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+    ) -> Union[
+        Tuple[torch.Tensor, Optional[torch.Tensor]],
+        Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]],
+    ]:
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
 
@@ -175,6 +182,12 @@ class QEffLlamaAttention(LlamaAttention):
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output, **kwargs)
 
+        capture_prefill = bool(getattr(getattr(self, "config", None), "enable_speculative_prefill", False))
+        if capture_prefill:
+            # last token query per head
+            q_last = query_states[:, :, -1, :]
+            return attn_output, attn_weights, q_last
+
         return attn_output, attn_weights
 
 
@@ -196,13 +209,21 @@ class QEffLlamaDecoderLayer(LlamaDecoderLayer):
         use_cache: Optional[bool] = False,
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs,
-    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+    ) -> Union[
+        Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]],
+        Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]], Optional[torch.FloatTensor]],
+    ]:
+        # Determine if speculative prefill capture is enabled; fall back to attention config if layer has no config
+        _cfg = getattr(self, "config", None)
+        if _cfg is None:
+            _cfg = getattr(self.self_attn, "config", None)
+        capture_prefill = bool(getattr(_cfg, "enable_speculative_prefill", False))
         residual = hidden_states
 
         hidden_states = self.input_layernorm(hidden_states)
 
         # Self Attention
-        hidden_states, _ = self.self_attn(
+        attn_out = self.self_attn(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             position_ids=position_ids,
@@ -213,6 +234,11 @@ class QEffLlamaDecoderLayer(LlamaDecoderLayer):
             cache_position=cache_position,
             **kwargs,
         )
+        if capture_prefill:
+            hidden_states, _, q_last = attn_out
+        else:
+            hidden_states, _ = attn_out
+            q_last = None
         hidden_states = residual + hidden_states
 
         # Fully Connected
@@ -221,6 +247,8 @@ class QEffLlamaDecoderLayer(LlamaDecoderLayer):
         hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
 
+        if capture_prefill:
+            return hidden_states, q_last
         return hidden_states
 
 
@@ -275,21 +303,40 @@ class QEffLlamaModel(LlamaModel):
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
 
+        layer_q_last_list = []
+        capture_prefill = getattr(self.config, "enable_speculative_prefill", False)
+
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
-            hidden_states = decoder_layer(
-                hidden_states,
-                attention_mask=causal_mask,
-                position_ids=position_ids,
-                past_key_value=past_key_values,
-                comp_ctx_lengths=comp_ctx_lengths,
-                batch_index=batch_index,
-                use_cache=use_cache,
-                cache_position=cache_position,
-                **kwargs,
-            )
+            if capture_prefill:
+                hidden_states, layer_q_last = decoder_layer(
+                    hidden_states,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_values,
+                    comp_ctx_lengths=comp_ctx_lengths,
+                    batch_index=batch_index,
+                    use_cache=use_cache,
+                    cache_position=cache_position,
+                    **kwargs,
+                )
+            else:
+                hidden_states = decoder_layer(
+                    hidden_states,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_values,
+                    comp_ctx_lengths=comp_ctx_lengths,
+                    batch_index=batch_index,
+                    use_cache=use_cache,
+                    cache_position=cache_position,
+                    **kwargs,
+                )
+                layer_q_last = None
+            if capture_prefill and layer_q_last is not None:
+                layer_q_last_list.append(layer_q_last)
 
         hidden_states = self.norm(hidden_states)
 
@@ -300,11 +347,23 @@ class QEffLlamaModel(LlamaModel):
         if return_legacy_cache:
             past_key_values = past_key_values.to_legacy_cache()
 
-        return BaseModelOutputWithPast(
-            last_hidden_state=hidden_states,
-            past_key_values=past_key_values,
-            hidden_states=all_hidden_states,
-        )
+        prefill_queries = None
+        if capture_prefill and layer_q_last_list:
+            prefill_queries = torch.stack(layer_q_last_list, dim=1)  # [bs, num_layers, heads, head_dim]
+            out = QEffBaseModelOutputWithPast(
+                last_hidden_state=hidden_states,
+                past_key_values=past_key_values,
+                hidden_states=all_hidden_states,
+                prefill_queries=prefill_queries,
+            )
+        else:
+            out = BaseModelOutputWithPast(
+                last_hidden_state=hidden_states,
+                past_key_values=past_key_values,
+                hidden_states=all_hidden_states,
+            )
+
+        return out
 
 
 class QEffLlamaForCausalLM(LlamaForCausalLM):
@@ -329,7 +388,6 @@ class QEffLlamaForCausalLM(LlamaForCausalLM):
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
-        # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -348,6 +406,16 @@ class QEffLlamaForCausalLM(LlamaForCausalLM):
         logit_index = position_ids.to(torch.int32).argmax(1, keepdim=True)
         hidden_states = outputs.last_hidden_state[torch.arange(position_ids.shape[0]).view(-1, 1), logit_index]
         logits = self.lm_head(hidden_states).float()
+
+        if getattr(self.model.config, "enable_speculative_prefill", False):
+            return QEffCausalLMOutputWithPast(
+                loss=None,
+                logits=logits,
+                past_key_values=outputs.past_key_values,
+                hidden_states=outputs.hidden_states,
+                attentions=outputs.attentions,
+                prefill_queries=getattr(outputs, "prefill_queries", None),
+            )
 
         return CausalLMOutputWithPast(
             loss=None,
