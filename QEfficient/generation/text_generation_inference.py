@@ -847,43 +847,77 @@ class QEffTextGenerationBase:
         prefill_logit_bs: int = 1,
         batch_index: Optional[np.ndarray] = None,
     ):
-        """Run prefill for preconstructed id/pos arrays, mirroring :meth:`run_prefill`.
-
-        Args:
-            final_ids (np.ndarray): token ids shaped [batch, seq_len].
-            final_pos (np.ndarray): absolute position ids shaped [batch, seq_len].
-            prefill_logit_bs (int): batch size for logits placeholder.
-            batch_index (Optional[np.ndarray]): CB batch indices shaped [batch, 1] if using continuous batching.
-
-        Returns:
-            Tuple(outputs, orig_seq_len, padded_len, num_chunks)
         """
+        Run prefill for explicit token and position ids, respecting prefill specialization.
+        Returns (outputs_last, position_ids_next, padded_len, num_chunks).
+        Notes:
+          - Enforces serial prefill semantics for CB: if batch_index is provided, it must be [1,1].
+          - Mirrors chunking behavior in run_prefill.
+          - Adds sampler and comp_ctx_lengths_prefill handling for parity with run_prefill.
+          - TLM and LoRA handling intentionally omitted per request.
+        """
+        # Validate inputs (expect serial prefill: batch size 1)
+        ids = np.asarray(final_ids)
+        pos = np.asarray(final_pos)
+        if ids.ndim != 2 or pos.ndim != 2:
+            raise ValueError(f"prefill_from_ids expects 2D arrays, got input_ids {ids.shape}, position_ids {pos.shape}")
+        if ids.shape[0] != 1 or pos.shape[0] != 1:
+            raise ValueError(f"prefill_from_ids expects batch_size=1, got input_ids {ids.shape}, position_ids {pos.shape}")
+        if ids.shape[1] != pos.shape[1]:
+            raise ValueError(f"input_ids and position_ids length mismatch: {ids.shape[1]} vs {pos.shape[1]}")
 
-        ids = final_ids
-        pos = final_pos
-        orig_seq_len = int(ids.shape[1])
+        # Enforce prefill specialization for CB: batch_index must be [1,1] if provided
+        if batch_index is not None:
+            bi = np.asarray(batch_index)
+            if bi.shape != (1, 1):
+                raise ValueError(f"prefill_from_ids expects batch_index shape [1,1] for prefill, got {bi.shape}")
 
-        padded_len = orig_seq_len
-        num_chunks = -(padded_len // -self._prefill_seq_len)
+        # Compute padding to match compiled prefill_seq_len
+        s_kept = int(ids.shape[1])
+        num_chunks = -(s_kept // -self._prefill_seq_len)
         padded_len = num_chunks * self._prefill_seq_len
+        pad_count = padded_len - s_kept
 
-        if padded_len > orig_seq_len:
-            pad_id = self.tokenizer.pad_token_id
-            pad_width = padded_len - orig_seq_len
+        pad_token_id = self.tokenizer.pad_token_id
+        if pad_count > 0:
             inputs = {
-                "input_ids": np.pad(ids, ((0, 0), (0, pad_width)), constant_values=pad_id),
-                "position_ids": np.pad(pos, ((0, 0), (0, pad_width)), constant_values=-1),
+                "input_ids": np.pad(ids, ((0, 0), (0, pad_count)), mode="constant", constant_values=pad_token_id),
+                "position_ids": np.pad(pos, ((0, 0), (0, pad_count)), mode="constant", constant_values=-1),
             }
         else:
             inputs = {"input_ids": ids, "position_ids": pos}
 
+        # Attach specialization selectors
         if batch_index is not None:
-            inputs["batch_index"] = batch_index
+            inputs["batch_index"] = np.asarray(batch_index)
 
-        logits_out_placeholder = np.zeros((prefill_logit_bs, 1, self._vocab_size), dtype=np.float32)
-        self._session.set_buffers({"logits": logits_out_placeholder})
+        # Parity: include sampler inputs if enabled
+        if self.include_sampler:
+            inputs["last_accepted_output_tokens"] = inputs["input_ids"]
+            for op in Constants.SAMPLER_OPS:
+                if batch_index is not None:
+                    inputs[op] = self.sampling_params[op][np.asarray(batch_index).flatten()]
+                else:
+                    inputs[op] = self.sampling_params[op]
 
+        # Parity: comp_ctx_lengths_prefill (CCL)
+        if self.comp_ctx_lengths_prefill is not None:
+            self.list_of_comp_ctx_lengths_prefill = [np.zeros(length) for length in self.comp_ctx_lengths_prefill]
+            prefill_ccl_id = 0
+            inputs["comp_ctx_lengths"] = self.list_of_comp_ctx_lengths_prefill[prefill_ccl_id]
+
+        # Use standardized buffer setter (handles logits/sampler configurations)
+        self._set_output_buffers(batch_size=prefill_logit_bs, sequence_length=1)
+
+        # Chunked prefill (mirror run_prefill)
+        outputs_last = None
         for i in range(num_chunks):
+            # Advance CCL if compiled and boundary crossed
+            if self.comp_ctx_lengths_prefill is not None:
+                if (i + 1) * self._prefill_seq_len > self.comp_ctx_lengths_prefill[prefill_ccl_id]:
+                    prefill_ccl_id = min(prefill_ccl_id + 1, len(self.comp_ctx_lengths_prefill) - 1)
+                    inputs["comp_ctx_lengths"] = self.list_of_comp_ctx_lengths_prefill[prefill_ccl_id]
+
             chunk_inputs = inputs.copy()
             chunk_inputs["input_ids"] = inputs["input_ids"][
                 :, i * self._prefill_seq_len : (i + 1) * self._prefill_seq_len
@@ -892,13 +926,27 @@ class QEffTextGenerationBase:
                 :, i * self._prefill_seq_len : (i + 1) * self._prefill_seq_len
             ]
             if batch_index is not None:
-                chunk_inputs["batch_index"] = batch_index
-            outputs = self._session.run(chunk_inputs)
+                chunk_inputs["batch_index"] = inputs["batch_index"]
+            if self.include_sampler:
+                chunk_inputs["last_accepted_output_tokens"] = chunk_inputs["input_ids"]
+
+            outputs_last = self._session.run(chunk_inputs)
 
             if self._write_io_dir is not None:
-                write_io_files(inputs, outputs, self._write_io_dir, "prefill", "aic_batch_io", True, False)
+                write_io_files(inputs, outputs_last, self._write_io_dir, "prefill", "aic_batch_io", True, False)
 
-        return outputs, orig_seq_len, padded_len, num_chunks
+        if outputs_last is None:
+            raise RuntimeError("prefill_from_ids produced no outputs; empty inputs?")
+
+        # Compute next absolute position id for decode (optional return)
+        try:
+            valid_mask = (pos >= 0)
+            max_pos = int(np.max(pos[valid_mask])) if np.any(valid_mask) else (s_kept - 1)
+            position_ids_next = np.array([[max_pos + 1]], dtype=np.int64)
+        except Exception:
+            position_ids_next = np.array([[s_kept]], dtype=np.int64)
+
+        return outputs_last, position_ids_next, padded_len, num_chunks
 
     def initialize_ccl(self, decode_inputs):
         self.list_of_comp_ctx_lengths_decode = [np.zeros(length) for length in self.comp_ctx_lengths_decode]
