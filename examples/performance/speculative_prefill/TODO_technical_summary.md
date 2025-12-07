@@ -4,15 +4,17 @@ Speculative prefill (SPECPREFILL) and your integration
 - High-level algorithm (look-ahead anchors supported; default look-ahead = 0):
   - Two-model pipeline:
     - Speculator (small model) runs full-prompt prefill to produce queries (Q) and per-layer keys (K).
+      - Q capture path (flag-gated): `QEffLlamaAttention.forward` emits last-token per-head queries (`q_last`), collected in `QEffLlamaDecoderLayer` and stacked in `QEffLlamaModel` as `prefill_queries`, surfaced via `QEffLlamaForCausalLM`.
+      - K capture path: retained-state `past_key.*_RetainedState` outputs enabled only on the final prefill chunk; harvested once from that chunk.
     - Importance computation:
-      - Per-head softmax over positions.
-      - Head-wise max, then layer-wise max.
+      - Host NumPy computes logits = Q·Kᵀ/√D per head (handles head_dim padding), softmax over positions.
+      - Head-wise max (or sum), then layer-wise max; look-ahead anchors averaged if enabled.
       - 1D smoothing (moving average).
-      - Block top‑K by mean score; force-keep last token.
+      - Block top‑K by mean score; force-keep last token; selection is percentage-based.
     - Restore absolute position_ids for the kept tokens.
     - Base model runs prefill only on selected tokens; decode continues from original context length S (full position indexing preserved).
   - Host-side scoring:
-    - Read Q and retained K to host; importance and selection computed on CPU to avoid modifying ONNX subgraphs.
+    - Read Q and retained K (final chunk) to host; importance and selection computed on CPU to avoid modifying ONNX subgraphs; retained-state K may be head-dim padded and is sliced to S before scoring.
     - Note: reading K to host can be DMA-heavy for very long contexts but simplifies deployment.
 
 - Integration into QEfficient (flag-gated, minimal disturbance to baseline):
