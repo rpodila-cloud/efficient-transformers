@@ -4,15 +4,17 @@ Speculative prefill (SPECPREFILL) and your integration
 - High-level algorithm (look-ahead anchors supported; default look-ahead = 0):
   - Two-model pipeline:
     - Speculator (small model) runs full-prompt prefill to produce queries (Q) and per-layer keys (K).
+      - Q capture path (flag-gated): `QEffLlamaAttention.forward` emits last-token per-head queries (`q_last`), collected in `QEffLlamaDecoderLayer` and stacked in `QEffLlamaModel` as `prefill_queries`, surfaced via `QEffLlamaForCausalLM`.
+      - K capture path: retained-state `past_key.*_RetainedState` outputs enabled only on the final prefill chunk; harvested once from that chunk.
     - Importance computation:
-      - Per-head softmax over positions.
-      - Head-wise max, then layer-wise max.
+      - Host NumPy computes logits = Q·Kᵀ/√D per head (handles head_dim padding), softmax over positions.
+      - Head-wise max (or sum), then layer-wise max; look-ahead anchors averaged if enabled.
       - 1D smoothing (moving average).
-      - Block top‑K by mean score; force-keep last token.
+      - Block top‑K by mean score; force-keep last token; selection is percentage-based.
     - Restore absolute position_ids for the kept tokens.
     - Base model runs prefill only on selected tokens; decode continues from original context length S (full position indexing preserved).
   - Host-side scoring:
-    - Read Q and retained K to host; importance and selection computed on CPU to avoid modifying ONNX subgraphs.
+    - Read Q and retained K (final chunk) to host; importance and selection computed on CPU to avoid modifying ONNX subgraphs; retained-state K may be head-dim padded and is sliced to S before scoring.
     - Note: reading K to host can be DMA-heavy for very long contexts but simplifies deployment.
 
 - Integration into QEfficient (flag-gated, minimal disturbance to baseline):
@@ -68,3 +70,24 @@ Base: ctx_len/prefill_seq_len must align with spec; CB supported when compiled w
   - Base model must align ctx_len and prefill_seq_len with speculator’s assumptions so position restoration remains consistent.
   - CB is supported for the base when compiled appropriately (full_batch_size, batch_index wiring).
   - The integration is opt-in; baseline generate code path untouched when flag off.
+
+Example: host-side scoring with tiny numbers (matches speculative_prefill_engine.py lines ~529–607)
+- Dimensions: L=2 layers, H=2 attn heads, H_kv=1 KV head (GQA), D=2, S_total=3 tokens, no smoothing; head aggregation = max, layer aggregation = max.
+- Inputs after slicing/padding fixes:
+  - Q_final [L,H,D]:
+    - Layer0: [[1.0,0.0],[0.0,1.0]]
+    - Layer1: [[0.5,0.5],[1.0,1.0]]
+  - K_global list length L; each [H_kv,S_total,D]:
+    - Layer0: [[[1.0,0.0],[0.0,1.0],[1.0,1.0]]]
+    - Layer1: [[[0.5,0.0],[0.0,0.5],[0.5,0.5]]]
+- GQA mapping: group_size=H/H_kv=2; head_to_kv=[0,0]; K_sel per layer expands to [H,S,D]=[2,3,2] with both heads seeing the single KV head slice.
+- Layer0 scoring (einsum hsd,hd->hs):
+  - Q0 head0 [1,0] vs K_sel0 → logits [1,0,1]; scale 1/sqrt(2) → [0.7071,0,0.7071]; softmax → [0.401,0.198,0.401].
+  - Q0 head1 [0,1] → logits [0,1,1]; scale → [0,0.7071,0.7071]; softmax → [0.198,0.401,0.401].
+  - Head max → importance_layer0 ≈ [0.401,0.401,0.401].
+- Layer1 scoring:
+  - Q1 head0 [0.5,0.5] vs K_sel1 → scaled logits [0.177,0.177,0.354]; softmax → [0.313,0.313,0.373].
+  - Q1 head1 [1,1] → scaled logits [0.354,0.354,0.707]; softmax → [0.292,0.292,0.416].
+  - Head max → importance_layer1 ≈ [0.313,0.313,0.416].
+- Layer aggregation (max across layers): importance ≈ [0.401,0.401,0.416] (shape [S_total]).
+ - Einsum detail: `np.einsum("hsd,hd->hs", K_sel, Q_l)` contracts over D, yielding [H,S]; order is K then Q but equivalent to q·kᵀ per head/token because D matches.
