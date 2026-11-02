@@ -1,0 +1,156 @@
+{
+  "created_utc": "2026-11-02T15:25:52.419885+00:00",
+  "root": ".",
+  "purpose": "Minimal unchanged source/import dependency subset and three CPU numerical checks; no complete configurator, saved data or environment",
+  "copy_method": "physical regular-file copies, SHA256 verified against stable source; no symlinks/hardlinks",
+  "entries": [
+    {
+      "source": "layer_benchmarks/__init__.py",
+      "destination": "source/layer_benchmarks/__init__.py",
+      "bytes": 137,
+      "sha256": "d83999fe88c9157729a4d9005e0e7cee6ac7fbd9faf85365fb2ccc7296126fdf"
+    },
+    {
+      "source": "layer_benchmarks/_runtime.py",
+      "destination": "source/layer_benchmarks/_runtime.py",
+      "bytes": 1953,
+      "sha256": "8bdcc91ccbc27eacf8db8826597eafd9a318c4f67d7c614300a55929c355940c"
+    },
+    {
+      "source": "layer_benchmarks/attention/__init__.py",
+      "destination": "source/layer_benchmarks/attention/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/__init__.py",
+      "destination": "source/layer_benchmarks/attention/msa/__init__.py",
+      "bytes": 158,
+      "sha256": "a321bd79abe092e48254ffa84389596283df0be07ac1550f51852544cfd9b015"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/bench.py",
+      "destination": "source/layer_benchmarks/attention/msa/bench.py",
+      "bytes": 20532,
+      "sha256": "626d1449394e8ef8b92fd13808ee49d3523ecc626c7c41ddc965cb4040b9764c"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/cache.py",
+      "destination": "source/layer_benchmarks/attention/msa/cache.py",
+      "bytes": 7980,
+      "sha256": "c48b4ccbab53e278c7d9beb5cbe1520faab80d84744a9592d1daa82bac73f140"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/__init__.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/__init__.py",
+      "bytes": 82,
+      "sha256": "cc3d922105aceca01d1905bcfe1b361145c092cb804564bf69b4d9b989541609"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/accuracy.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/accuracy.py",
+      "bytes": 14992,
+      "sha256": "1ea5143d836760908cc33fdffaf8bc1e1b2c6b446fdf46a896314bdf36c72edd"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/model.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/model.py",
+      "bytes": 12505,
+      "sha256": "86983e238e0b077f624216ec36458b7d227ee0b96a102d36cced9f1d51a2deea"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/tests/__init__.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/tests/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/tests/test_numerical.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/tests/test_numerical.py",
+      "bytes": 1798,
+      "sha256": "637daeab5b28073ef783f9888446ddf0a11ec0eed9de02cb4f94f289510ea1f0"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/configurator/validation.py",
+      "destination": "source/layer_benchmarks/attention/msa/configurator/validation.py",
+      "bytes": 8482,
+      "sha256": "e558a8381922c9c83f23e3e83e9963c75f3e2ef826a6938f87fdda834d001cc5"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/forwards.py",
+      "destination": "source/layer_benchmarks/attention/msa/forwards.py",
+      "bytes": 213899,
+      "sha256": "ab5fdea05cb72f9ddc0b0ce275f7e8678a8aa86a26ef5ed1b14d042902aa1fe3"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/ops.py",
+      "destination": "source/layer_benchmarks/attention/msa/ops.py",
+      "bytes": 7509,
+      "sha256": "3b6494e6f108a0d5f98d8cdf65b79c491f228c500ded0792d4662b0803722753"
+    },
+    {
+      "source": "layer_benchmarks/attention/msa/parity.py",
+      "destination": "source/layer_benchmarks/attention/msa/parity.py",
+      "bytes": 15874,
+      "sha256": "0262a9a131f53d81ed41de64b19cd6662fe7ee2a27aaedf17e601f94f3677d17"
+    },
+    {
+      "source": "layer_benchmarks/common/__init__.py",
+      "destination": "source/layer_benchmarks/common/__init__.py",
+      "bytes": 93,
+      "sha256": "47089547f19867c8d637f6ff7f4bfc1e571b547fd2da64f8135b7d3c3211bb12"
+    },
+    {
+      "source": "layer_benchmarks/common/cli.py",
+      "destination": "source/layer_benchmarks/common/cli.py",
+      "bytes": 7286,
+      "sha256": "8154d7a2720a5d430add8c4d3d346a3d15a863276144c728d4539e8517f46864"
+    },
+    {
+      "source": "layer_benchmarks/common/custom_ops.py",
+      "destination": "source/layer_benchmarks/common/custom_ops.py",
+      "bytes": 2784,
+      "sha256": "2018e7c95f4bdb9cc3010b9daae49bf7b1b5ceed4b64262ccfac9619a162aedd"
+    },
+    {
+      "source": "layer_benchmarks/common/export.py",
+      "destination": "source/layer_benchmarks/common/export.py",
+      "bytes": 3895,
+      "sha256": "4e9f452b79f168622db6162147b92be427c76358ffc232ed6a74106cbde14429"
+    },
+    {
+      "source": "layer_benchmarks/common/parity.py",
+      "destination": "source/layer_benchmarks/common/parity.py",
+      "bytes": 2533,
+      "sha256": "042f69a4e38c4a21aaa8019d4e181ebd8a4ec3da2cd0a4219464d6278eef086e"
+    },
+    {
+      "source": "layer_benchmarks/common/qaic.py",
+      "destination": "source/layer_benchmarks/common/qaic.py",
+      "bytes": 23286,
+      "sha256": "d961cb36f587b487385ba0edff0542c2defbb1ffcc8a3858517d8ee86172f6a4"
+    },
+    {
+      "source": "layer_benchmarks/requirements.txt",
+      "destination": "source/layer_benchmarks/requirements.txt",
+      "bytes": 241,
+      "sha256": "36e6f0316196a055acd7e1149f1dbffcce0e05021723993fbff358ebf175ef60"
+    }
+  ],
+  "copied_bytes": 346019,
+  "derived_views": "None; copied CPU replay artifacts removed after code-only scope clarification",
+  "omitted": [
+    "venv/site-packages and third-party dependencies",
+    "ONNX/checkpoints/weights/tensor fixtures and all run artifacts",
+    "accelerator campaign/worker/workflow/allocator tools and their tests",
+    "duplicate benchmark docs, launchers and historical reports"
+  ],
+  "derived_files": [
+    {
+      "destination": "MSA_CPU_ACCURACY_HANDOFF.md",
+      "sha256": "7b4b596cf6b75dbd562365880c586dbdba597888a20d01041b797172fca1a446",
+      "purpose": "Concise entry point for minimal CPU-only source subset"
+    }
+  ],
+  "path_convention": "root/destination/derived paths are bundle-relative; source paths are upstream repository-relative provenance, not runtime locations"
+}
