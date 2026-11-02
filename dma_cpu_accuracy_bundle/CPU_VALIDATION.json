@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "cli_help_exit_code": 0,
+  "family_modules_imported": [
+    "layer_benchmarks.dma.bench",
+    "layer_benchmarks.dma.ref"
+  ],
+  "import_paths": [
+    "layer_benchmarks/dma/bench.py",
+    "layer_benchmarks/dma/ref.py"
+  ],
+  "sdk_absent": true,
+  "network_process_export_session_guards": true,
+  "scope": "relocated source imports and CLI --help only; no numerical accuracy certification",
+  "benchmark": "dma",
+  "copied_source_files": 12,
+  "copied_source_bytes": 47591,
+  "all_copied_hashes_verified": true,
+  "relative_links_verified": true,
+  "no_venv_models_or_artifacts": true,
+  "relocation": "renamed temporary copy outside original workspace",
+  "numerical_accuracy": "not evaluated by this packaging task",
+  "python_tested": "3.12.3"
+}

@@ -1,0 +1,135 @@
+{
+  "created_utc": "2026-11-02T16:14:29.492139+00:00",
+  "root": ".",
+  "benchmark": "mla",
+  "module": "layer_benchmarks.attention.mla.bench",
+  "purpose": "Portable minimal code-only microbenchmark source/import bundle; no numerical acceptance claim",
+  "path_convention": "destinations bundle-relative; sources upstream-repository-relative provenance only",
+  "copy_method": "physical regular-file copies, SHA256 verified; no symlinks/hardlinks",
+  "entries": [
+    {
+      "source": "layer_benchmarks/__init__.py",
+      "destination": "source/layer_benchmarks/__init__.py",
+      "bytes": 137,
+      "sha256": "d83999fe88c9157729a4d9005e0e7cee6ac7fbd9faf85365fb2ccc7296126fdf"
+    },
+    {
+      "source": "layer_benchmarks/_runtime.py",
+      "destination": "source/layer_benchmarks/_runtime.py",
+      "bytes": 1953,
+      "sha256": "8bdcc91ccbc27eacf8db8826597eafd9a318c4f67d7c614300a55929c355940c"
+    },
+    {
+      "source": "layer_benchmarks/attention/__init__.py",
+      "destination": "source/layer_benchmarks/attention/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/__init__.py",
+      "destination": "source/layer_benchmarks/attention/mla/__init__.py",
+      "bytes": 54,
+      "sha256": "6d79cc3662ae3420c144373c4a46e63ae0603bc36c094351575c5c72d3250912"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/bench.py",
+      "destination": "source/layer_benchmarks/attention/mla/bench.py",
+      "bytes": 6257,
+      "sha256": "6a2ff8bfa3702fe60793c1e015cb7af0f27831f9c67bc3de42c7d5abc9d8465e"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/cache.py",
+      "destination": "source/layer_benchmarks/attention/mla/cache.py",
+      "bytes": 2148,
+      "sha256": "87db310f0d89a09c205c84880153948dd39befade0e21ced227a325a6e468539"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/forwards.py",
+      "destination": "source/layer_benchmarks/attention/mla/forwards.py",
+      "bytes": 22369,
+      "sha256": "2c5d5948e385612fb604f7eb35eae8b439002fd18ee4a66076e54ee6c5ee3244"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/ops.py",
+      "destination": "source/layer_benchmarks/attention/mla/ops.py",
+      "bytes": 1260,
+      "sha256": "c51972185814b52bb5bffe7c3501cfb8d98659fb790bc3abbb7d9dfa6f96c890"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/parity.py",
+      "destination": "source/layer_benchmarks/attention/mla/parity.py",
+      "bytes": 3231,
+      "sha256": "1d7190cf24d882995c1bded33611055b3570a8822da912aefa9a680c3bacb496"
+    },
+    {
+      "source": "layer_benchmarks/attention/mla/ref.py",
+      "destination": "source/layer_benchmarks/attention/mla/ref.py",
+      "bytes": 7522,
+      "sha256": "82937d158c3a026ff18cea5597a30839ce887f0b0e10a9719241721763439d34"
+    },
+    {
+      "source": "layer_benchmarks/common/__init__.py",
+      "destination": "source/layer_benchmarks/common/__init__.py",
+      "bytes": 93,
+      "sha256": "47089547f19867c8d637f6ff7f4bfc1e571b547fd2da64f8135b7d3c3211bb12"
+    },
+    {
+      "source": "layer_benchmarks/common/cli.py",
+      "destination": "source/layer_benchmarks/common/cli.py",
+      "bytes": 7286,
+      "sha256": "8154d7a2720a5d430add8c4d3d346a3d15a863276144c728d4539e8517f46864"
+    },
+    {
+      "source": "layer_benchmarks/common/custom_ops.py",
+      "destination": "source/layer_benchmarks/common/custom_ops.py",
+      "bytes": 2784,
+      "sha256": "2018e7c95f4bdb9cc3010b9daae49bf7b1b5ceed4b64262ccfac9619a162aedd"
+    },
+    {
+      "source": "layer_benchmarks/common/export.py",
+      "destination": "source/layer_benchmarks/common/export.py",
+      "bytes": 3895,
+      "sha256": "4e9f452b79f168622db6162147b92be427c76358ffc232ed6a74106cbde14429"
+    },
+    {
+      "source": "layer_benchmarks/common/parity.py",
+      "destination": "source/layer_benchmarks/common/parity.py",
+      "bytes": 2533,
+      "sha256": "042f69a4e38c4a21aaa8019d4e181ebd8a4ec3da2cd0a4219464d6278eef086e"
+    },
+    {
+      "source": "layer_benchmarks/common/qaic.py",
+      "destination": "source/layer_benchmarks/common/qaic.py",
+      "bytes": 23286,
+      "sha256": "d961cb36f587b487385ba0edff0542c2defbb1ffcc8a3858517d8ee86172f6a4"
+    },
+    {
+      "source": "layer_benchmarks/requirements.txt",
+      "destination": "source/layer_benchmarks/requirements.txt",
+      "bytes": 241,
+      "sha256": "36e6f0316196a055acd7e1149f1dbffcce0e05021723993fbff358ebf175ef60"
+    }
+  ],
+  "copied_bytes": 85049,
+  "family_modules": [
+    "layer_benchmarks.attention.mla.bench",
+    "layer_benchmarks.attention.mla.cache",
+    "layer_benchmarks.attention.mla.forwards",
+    "layer_benchmarks.attention.mla.ops",
+    "layer_benchmarks.attention.mla.parity",
+    "layer_benchmarks.attention.mla.ref"
+  ],
+  "excluded": [
+    "venvs/site-packages/HF overlay",
+    "checkpoints/weights/caches/arrays/model files",
+    "ONNX/QPC/compiler dumps/performance artifacts",
+    "unrelated benchmarks and hardware launch scripts"
+  ],
+  "derived_files": [
+    {
+      "destination": "CPU_HANDOFF.md",
+      "sha256": "2dd7eba7b5d34bf98d08d2b2f903ba6b3f532ca347294af37c7976483261636e",
+      "purpose": "Portable per-benchmark code-only handoff"
+    }
+  ]
+}

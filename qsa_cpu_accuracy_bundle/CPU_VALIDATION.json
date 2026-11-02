@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "cli_help_exit_code": 0,
+  "family_modules_imported": [
+    "layer_benchmarks.attention.qsa.bench",
+    "layer_benchmarks.attention.qsa.cache",
+    "layer_benchmarks.attention.qsa.forwards",
+    "layer_benchmarks.attention.qsa.ops",
+    "layer_benchmarks.attention.qsa.parity",
+    "layer_benchmarks.attention.qsa.ref"
+  ],
+  "import_paths": [
+    "layer_benchmarks/attention/qsa/bench.py",
+    "layer_benchmarks/attention/qsa/cache.py",
+    "layer_benchmarks/attention/qsa/forwards.py",
+    "layer_benchmarks/attention/qsa/ops.py",
+    "layer_benchmarks/attention/qsa/parity.py",
+    "layer_benchmarks/attention/qsa/ref.py"
+  ],
+  "sdk_absent": true,
+  "network_process_export_session_guards": true,
+  "scope": "relocated source imports and CLI --help only; no numerical accuracy certification",
+  "benchmark": "qsa",
+  "copied_source_files": 18,
+  "copied_source_bytes": 141770,
+  "all_copied_hashes_verified": true,
+  "relative_links_verified": true,
+  "no_venv_models_or_artifacts": true,
+  "relocation": "renamed temporary copy outside original workspace",
+  "numerical_accuracy": "not evaluated by this packaging task",
+  "python_tested": "3.12.3"
+}

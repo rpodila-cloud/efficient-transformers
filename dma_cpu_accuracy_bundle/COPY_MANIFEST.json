@@ -1,0 +1,101 @@
+{
+  "created_utc": "2026-11-02T16:14:29.614367+00:00",
+  "root": ".",
+  "benchmark": "dma",
+  "module": "layer_benchmarks.dma.bench",
+  "purpose": "Portable minimal code-only microbenchmark source/import bundle; no numerical acceptance claim",
+  "path_convention": "destinations bundle-relative; sources upstream-repository-relative provenance only",
+  "copy_method": "physical regular-file copies, SHA256 verified; no symlinks/hardlinks",
+  "entries": [
+    {
+      "source": "layer_benchmarks/__init__.py",
+      "destination": "source/layer_benchmarks/__init__.py",
+      "bytes": 137,
+      "sha256": "d83999fe88c9157729a4d9005e0e7cee6ac7fbd9faf85365fb2ccc7296126fdf"
+    },
+    {
+      "source": "layer_benchmarks/_runtime.py",
+      "destination": "source/layer_benchmarks/_runtime.py",
+      "bytes": 1953,
+      "sha256": "8bdcc91ccbc27eacf8db8826597eafd9a318c4f67d7c614300a55929c355940c"
+    },
+    {
+      "source": "layer_benchmarks/common/__init__.py",
+      "destination": "source/layer_benchmarks/common/__init__.py",
+      "bytes": 93,
+      "sha256": "47089547f19867c8d637f6ff7f4bfc1e571b547fd2da64f8135b7d3c3211bb12"
+    },
+    {
+      "source": "layer_benchmarks/common/cli.py",
+      "destination": "source/layer_benchmarks/common/cli.py",
+      "bytes": 7286,
+      "sha256": "8154d7a2720a5d430add8c4d3d346a3d15a863276144c728d4539e8517f46864"
+    },
+    {
+      "source": "layer_benchmarks/common/custom_ops.py",
+      "destination": "source/layer_benchmarks/common/custom_ops.py",
+      "bytes": 2784,
+      "sha256": "2018e7c95f4bdb9cc3010b9daae49bf7b1b5ceed4b64262ccfac9619a162aedd"
+    },
+    {
+      "source": "layer_benchmarks/common/export.py",
+      "destination": "source/layer_benchmarks/common/export.py",
+      "bytes": 3895,
+      "sha256": "4e9f452b79f168622db6162147b92be427c76358ffc232ed6a74106cbde14429"
+    },
+    {
+      "source": "layer_benchmarks/common/parity.py",
+      "destination": "source/layer_benchmarks/common/parity.py",
+      "bytes": 2533,
+      "sha256": "042f69a4e38c4a21aaa8019d4e181ebd8a4ec3da2cd0a4219464d6278eef086e"
+    },
+    {
+      "source": "layer_benchmarks/common/qaic.py",
+      "destination": "source/layer_benchmarks/common/qaic.py",
+      "bytes": 23286,
+      "sha256": "d961cb36f587b487385ba0edff0542c2defbb1ffcc8a3858517d8ee86172f6a4"
+    },
+    {
+      "source": "layer_benchmarks/dma/__init__.py",
+      "destination": "source/layer_benchmarks/dma/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "layer_benchmarks/dma/bench.py",
+      "destination": "source/layer_benchmarks/dma/bench.py",
+      "bytes": 4940,
+      "sha256": "71d3b5839a6cdb9775fc586d48b59eb29218a3c59530a68f90c8eef132d3ad17"
+    },
+    {
+      "source": "layer_benchmarks/dma/ref.py",
+      "destination": "source/layer_benchmarks/dma/ref.py",
+      "bytes": 443,
+      "sha256": "58b843f54a31bdd8e167df8d48caf82cb6a03de94ffc742dd366b7e893f7bf1a"
+    },
+    {
+      "source": "layer_benchmarks/requirements.txt",
+      "destination": "source/layer_benchmarks/requirements.txt",
+      "bytes": 241,
+      "sha256": "36e6f0316196a055acd7e1149f1dbffcce0e05021723993fbff358ebf175ef60"
+    }
+  ],
+  "copied_bytes": 47591,
+  "family_modules": [
+    "layer_benchmarks.dma.bench",
+    "layer_benchmarks.dma.ref"
+  ],
+  "excluded": [
+    "venvs/site-packages/HF overlay",
+    "checkpoints/weights/caches/arrays/model files",
+    "ONNX/QPC/compiler dumps/performance artifacts",
+    "unrelated benchmarks and hardware launch scripts"
+  ],
+  "derived_files": [
+    {
+      "destination": "CPU_HANDOFF.md",
+      "sha256": "63c4a54d54d3390b7cfa0acf0d78c09f34521aa5a6fa442000b21d017271aff4",
+      "purpose": "Portable per-benchmark code-only handoff"
+    }
+  ]
+}
