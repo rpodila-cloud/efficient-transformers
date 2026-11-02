@@ -1,0 +1,267 @@
+{
+  "validated_utc": "2026-11-02T16:28:11.183116+00:00",
+  "status": "passed",
+  "root": ".",
+  "scope": "All10: renamed-location import/CLI readiness with SDK absent and network/process/export/session calls blocked; MSA only: three small FP32 CPU checks. No new precision/production accuracy certification.",
+  "source_files": 75,
+  "source_bytes": 871668,
+  "shared_common_directories": 1,
+  "all_source_hashes_verified": true,
+  "no_venv_models_or_artifacts": true,
+  "benchmarks": [
+    {
+      "status": "passed",
+      "benchmark": "msa",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.msa.bench",
+        "layer_benchmarks.attention.msa.cache",
+        "layer_benchmarks.attention.msa.forwards",
+        "layer_benchmarks.attention.msa.ops",
+        "layer_benchmarks.attention.msa.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/msa/bench.py",
+        "layer_benchmarks/attention/msa/cache.py",
+        "layer_benchmarks/attention/msa/forwards.py",
+        "layer_benchmarks/attention/msa/ops.py",
+        "layer_benchmarks/attention/msa/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 3,
+      "test_output": "test_repacking (layer_benchmarks.attention.msa.configurator.tests.test_numerical.NumericalTests.test_repacking) ... ok\ntest_cp_chunks_and_boundaries (layer_benchmarks.attention.msa.configurator.tests.test_numerical.NumericalTests.test_cp_chunks_and_boundaries) ... ok\ntest_batch_dp (layer_benchmarks.attention.msa.configurator.tests.test_numerical.NumericalTests.test_batch_dp) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.823s\n\nOK\n",
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "gqa",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.gqa.bench",
+        "layer_benchmarks.attention.gqa.cache",
+        "layer_benchmarks.attention.gqa.forwards",
+        "layer_benchmarks.attention.gqa.ops",
+        "layer_benchmarks.attention.gqa.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/gqa/bench.py",
+        "layer_benchmarks/attention/gqa/cache.py",
+        "layer_benchmarks/attention/gqa/forwards.py",
+        "layer_benchmarks/attention/gqa/ops.py",
+        "layer_benchmarks/attention/gqa/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "mla",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.mla.bench",
+        "layer_benchmarks.attention.mla.cache",
+        "layer_benchmarks.attention.mla.forwards",
+        "layer_benchmarks.attention.mla.ops",
+        "layer_benchmarks.attention.mla.parity",
+        "layer_benchmarks.attention.mla.ref"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/mla/bench.py",
+        "layer_benchmarks/attention/mla/cache.py",
+        "layer_benchmarks/attention/mla/forwards.py",
+        "layer_benchmarks/attention/mla/ops.py",
+        "layer_benchmarks/attention/mla/parity.py",
+        "layer_benchmarks/attention/mla/ref.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "dsa",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.dsa.bench",
+        "layer_benchmarks.attention.dsa.cache",
+        "layer_benchmarks.attention.dsa.forwards",
+        "layer_benchmarks.attention.dsa.ops",
+        "layer_benchmarks.attention.dsa.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/dsa/bench.py",
+        "layer_benchmarks/attention/dsa/cache.py",
+        "layer_benchmarks/attention/dsa/forwards.py",
+        "layer_benchmarks/attention/dsa/ops.py",
+        "layer_benchmarks/attention/dsa/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "hca",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.hca.bench",
+        "layer_benchmarks.attention.hca.cache",
+        "layer_benchmarks.attention.hca.forwards",
+        "layer_benchmarks.attention.hca.ops",
+        "layer_benchmarks.attention.hca.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/hca/bench.py",
+        "layer_benchmarks/attention/hca/cache.py",
+        "layer_benchmarks/attention/hca/forwards.py",
+        "layer_benchmarks/attention/hca/ops.py",
+        "layer_benchmarks/attention/hca/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "qsa",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.qsa.bench",
+        "layer_benchmarks.attention.qsa.cache",
+        "layer_benchmarks.attention.qsa.forwards",
+        "layer_benchmarks.attention.qsa.ops",
+        "layer_benchmarks.attention.qsa.parity",
+        "layer_benchmarks.attention.qsa.ref"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/qsa/bench.py",
+        "layer_benchmarks/attention/qsa/cache.py",
+        "layer_benchmarks/attention/qsa/forwards.py",
+        "layer_benchmarks/attention/qsa/ops.py",
+        "layer_benchmarks/attention/qsa/parity.py",
+        "layer_benchmarks/attention/qsa/ref.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "csa",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.csa.bench",
+        "layer_benchmarks.attention.csa.cache",
+        "layer_benchmarks.attention.csa.forwards",
+        "layer_benchmarks.attention.csa.ops",
+        "layer_benchmarks.attention.csa.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/csa/bench.py",
+        "layer_benchmarks/attention/csa/cache.py",
+        "layer_benchmarks/attention/csa/forwards.py",
+        "layer_benchmarks/attention/csa/ops.py",
+        "layer_benchmarks/attention/csa/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "linear",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.attention.linear.bench",
+        "layer_benchmarks.attention.linear.cache",
+        "layer_benchmarks.attention.linear.forwards",
+        "layer_benchmarks.attention.linear.ops",
+        "layer_benchmarks.attention.linear.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/attention/linear/bench.py",
+        "layer_benchmarks/attention/linear/cache.py",
+        "layer_benchmarks/attention/linear/forwards.py",
+        "layer_benchmarks/attention/linear/ops.py",
+        "layer_benchmarks/attention/linear/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "moe",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.moe.bench",
+        "layer_benchmarks.moe.forwards",
+        "layer_benchmarks.moe.ops",
+        "layer_benchmarks.moe.parity"
+      ],
+      "import_paths": [
+        "layer_benchmarks/moe/bench.py",
+        "layer_benchmarks/moe/forwards.py",
+        "layer_benchmarks/moe/ops.py",
+        "layer_benchmarks/moe/parity.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    },
+    {
+      "status": "passed",
+      "benchmark": "dma",
+      "cli_help_exit_code": 0,
+      "modules_imported": [
+        "layer_benchmarks.dma.bench",
+        "layer_benchmarks.dma.ref"
+      ],
+      "import_paths": [
+        "layer_benchmarks/dma/bench.py",
+        "layer_benchmarks/dma/ref.py"
+      ],
+      "sdk_absent": true,
+      "network_process_export_session_guards": true,
+      "cpu_numerical_tests": 0,
+      "test_output": null,
+      "scope": "MSA: three small FP32 CPU checks; all families: relocated imports/CLI readiness only, not new production/precision accuracy certification",
+      "relocation": "renamed temporary copy outside original workspace"
+    }
+  ],
+  "relative_links_verified": true,
+  "cleanup": {
+    "obsolete_generated_bundles_removed": 10,
+    "obsolete_generated_files_removed": 198,
+    "old_index_removed": true,
+    "original_source_and_run_trees_preserved": true,
+    "method": "verified individual file unlink and empty-directory rmdir; no recursive root deletion"
+  }
+}
